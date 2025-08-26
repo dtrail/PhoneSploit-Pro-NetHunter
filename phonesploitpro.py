@@ -26,6 +26,7 @@
 """
 
 import os
+import re
 import random
 import socket
 import time
@@ -35,6 +36,8 @@ import datetime
 import nmap
 from modules import banner
 from modules import color
+
+
 
 
 def start():
@@ -579,10 +582,30 @@ def list_files():
     print("\n")
 
 
+def select_interface():
+    routes = os.popen("ip r").read()
+    interfaces = re.findall(r'dev (\S+)', routes)
+    interfaces = list(set(interfaces))
+    print("Available interfaces:")
+    for i, iface in enumerate(interfaces):
+        print(f"{i}: {iface}")
+    choice = int(input("Select interface to scan from: "))
+    return interfaces[choice]
+
+def get_ip_address_from_interface(iface):
+    output = os.popen(f"ip addr show {iface}").read()
+    match = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', output)
+    return match.group(1) if match else None
+
 def get_ip_address():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    return s.getsockname()[0]
+    iface = select_interface()
+    ip = get_ip_address_from_interface(iface)
+    if ip:
+        print(f"Using IP {ip} from interface {iface}")
+        return ip
+    else:
+        print("Could not retrieve IP from selected interface.")
+        return None
 
 
 def instructions():
@@ -1428,34 +1451,38 @@ def visit_me():
 
 def scan_network():
     print(f"\n{color.GREEN}Scanning network for connected devices...{color.WHITE}\n")
-    ip = get_ip_address()
-    ip += "/24"
+
+    iface = select_interface()
+    ip = get_ip_address_from_interface(iface)
+    subnet = ip.rsplit('.', 1)[0] + '.0/24'
+
+    print("Choose scan method:")
+    print("1 - Fast ping scan (default)")
+    print("2 - Interface-bound scan (-Pn -e iface)")
+    method = input("Select method [1/2]: ").strip()
 
     scanner = nmap.PortScanner()
-    scanner.scan(hosts=ip, arguments="-sn")
+
+    if method == "2":
+        scan_args = f"-Pn -e {iface}"
+        print(f"\n{color.YELLOW}Using interface-bound scan on {subnet} via {iface}{color.WHITE}\n")
+    else:
+        scan_args = "-sn"
+        print(f"\n{color.YELLOW}Using default ping scan on {subnet}{color.WHITE}\n")
+
+    scanner.scan(hosts=subnet, arguments=scan_args)
+
     for host in scanner.all_hosts():
         if scanner[host]["status"]["state"] == "up":
             try:
-                if len(scanner[host]["vendor"]) == 0:
-                    try:
-                        print(
-                            f"[{color.GREEN}+{color.WHITE}] {host}      \t {socket.gethostbyaddr(host)[0]}"
-                        )
-                    except:
-                        print(f"[{color.GREEN}+{color.WHITE}] {host}")
+                vendor = scanner[host].get("vendor", {})
+                hostname = socket.gethostbyaddr(host)[0] if host else ""
+                if not vendor:
+                    print(f"[{color.GREEN}+{color.WHITE}] {host}\t{hostname}")
                 else:
-                    try:
-                        print(
-                            f"[{color.GREEN}+{color.WHITE}] {host}      \t {scanner[host]['vendor']}      \t {socket.gethostbyaddr(host)[0]}"
-                        )
-                    except:
-                        print(
-                            f"[{color.GREEN}+{color.WHITE}] {host}      \t {scanner[host]['vendor']}"
-                        )
+                    print(f"[{color.GREEN}+{color.WHITE}] {host}\t{vendor}\t{hostname}")
             except:
-                print(
-                    f"[{color.GREEN}+{color.WHITE}] {host}      \t {scanner[host]['vendor']}"
-                )
+                print(f"[{color.GREEN}+{color.WHITE}] {host}")
 
     print("\n")
 
