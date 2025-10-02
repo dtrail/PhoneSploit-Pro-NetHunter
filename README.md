@@ -104,7 +104,7 @@ The goal of this project is to make penetration testing and vulnerability assess
 ## Fork
 
 * Tweaked for NetHunter
-* 
+  
 
 # Requirements  
 * [`python3`](https://www.python.org/) : Python 3.10 or Newer
@@ -128,10 +128,10 @@ Make sure all the [required](https://github.com/AzeemIdrisi/PhoneSploit-Pro#requ
 
 Open terminal and paste the following commands : 
 ```
-git clone https://github.com/AzeemIdrisi/PhoneSploit-Pro.git
+git clone https://github.com/dtrail/PhoneSploit-Pro-NetHunter.git
 ```
 ```
-cd PhoneSploit-Pro/
+cd PhoneSploit-Pro-NetHunter/
 ```
 ```
 pip install -r requirements.txt
